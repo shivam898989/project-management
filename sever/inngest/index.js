@@ -59,10 +59,90 @@ const syncUserUpdation = inngest.createFunction(
     }
 )
 
+// Inngest Function to save workspace data to a database
+const syncWorkspaceCreation = inngest.createFunction(
+    {id:'sync-workspace-from-clerk'},
+    {event:'clerk/workspace.created'},
+
+    async ({event}) => {
+        const {data} = event;
+        await prisma.workspace.create({
+            data:{
+                id: data.id,
+                name: data.name,
+                slug: data.slug,
+                image_url: data.image_url,
+                ownerId: data.created_by,
+
+            }
+        })
+
+        //Add creater as ADMIN member
+        await prisma.workspaceMember.create({
+            data:{
+                userId: data.created_by,
+                workspaceId: data.id,
+                role: 'ADMIN',
+            }
+        })
+    }
+)
+// Inngest Function to update workspace data in a database
+const syncWorkspaceUpdation = inngest.createFunction(
+    {id:'update-workspace-from-clerk'},
+    {event:'clerk/workspace.updated'},
+    async ({event}) => {
+        const {data} = event;
+        await prisma.workspace.update({
+            where:{
+                id: data.id,
+            },
+            data:{name: data.name,
+                slug: data.slug,
+                image_url: data.image_url
+            }
+        })
+    }
+)
+
+//Inggest function to delete workspace data from database
+const syncWorkspaceDeletion = inngest.createFunction(
+    {id:'delete-workspace-from-clerk'},
+    {event:'clerk/workspace.deleted'},
+    async ({event}) => {
+        const {data} = event;
+        await prisma.workspace.delete({
+            where:{
+                id: data.id,
+            }
+        })
+    }
+)
+
+//Inngest function to save workspace member data to database
+const syncWorkspaceMemberCreation = inngest.createFunction(
+    {id:'sync-workspace-member-from-clerk'},
+    {event:'clerk/workspace_member.created'},
+
+    async ({event}) => {
+        const {data} = event;
+        await prisma.workspaceMember.create({
+            data:{
+                userId: data.user_id,
+                workspaceId: data.organization_id,
+                role: String(data.role_name).toUpperCase(),
+            }
+        })
+    }  
+)
 
 // Create an empty array where we'll export future Inngest functions
 export const functions = [
     syncUserCreation,
     syncUserDeletion,
-    syncUserUpdation
-];
+    syncUserUpdation,
+    syncWorkspaceCreation,
+    syncWorkspaceUpdation,
+    syncWorkspaceDeletion,
+    syncWorkspaceMemberCreation
+]
